@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 		printf("Argument error!\n");
 		printf(" 1) Signal length in number of time samples (min 15000 samples)\n");
 		printf(" 2) Template length Example:128\n");
-		printf(" 3) Number of templates\n");
+		printf(" 3) Number of filters\n");
 		printf(" 4) Name of the file to export signal to\n");
 		printf(" 5) Name of the file to export filters to\n");
         return 1;
