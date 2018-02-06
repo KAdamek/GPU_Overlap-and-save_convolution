@@ -4,14 +4,12 @@ file1= "CONV_cuFFT.dat";
 
 
 data1 =  read.table(paste(inpath,file1,sep=""));
-tempdata<-data1;
-data1<-tempdata[(tempdata[[5]]==0),]
 alldata<-rbind(data1);
 
 
 newline <- ""
 
-template_length <- c(64,96,128,192,256,384,512);
+template_length <- c(64,96,128,192,256,384,512,768,1024);
 templates <- c(2,4,8,16,32,64,96);
 signal_length <- c(262144,524288,1048576,2097152,4194304,8388608);
 bestdata<-alldata[1,];bestdata<-bestdata[-1,];

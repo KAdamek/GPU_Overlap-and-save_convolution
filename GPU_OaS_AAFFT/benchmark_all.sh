@@ -1,10 +1,10 @@
 #!/bin/bash
 
-for tempsize in 64 96 128 192 256 384 512;
+for tempsize in 64 96 128 192 256 384 512 768 1024;
 do
 	for templates in 2 4 8 16 32 64 96;
 	do
-		for reg in 0 24 32 40 48 56 64 72 128;
+		for reg in 0;
 		do
 			echo "#define CONV_SIZE 1024" > params.h
 			echo "#define CONV_HALF 512" >> params.h
