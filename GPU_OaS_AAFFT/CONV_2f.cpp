@@ -289,6 +289,17 @@ int main(int argc, char* argv[]) {
 		else if (VERBOSE) printf("File loaded\n");
 	}
 	
+	//----------------> Results
+	double execution_time = 0;
+	Performance_results CONV_cuFFT;
+	CONV_cuFFT.Assign(nTimesamples, filter_length, nFilters, nRuns, reglim, CONV_SIZE, nFilters, "CONV_kFFT.dat", "two");
+	
+	int offset           = filter_length/2; // we assume that filter is centered around zero
+	int useful_part_size = CONV_SIZE - filter_length + 1;
+	int nConvolutions    = nTimesamples/useful_part_size;
+	if( (nTimesamples%useful_part_size)>0 ) nConvolutions++;
+	if( useful_part_size<=1) {printf("Filter length is too long. Increase FFT length.\n");exit(1);}
+	
 	if (input_type == 'r') {
 		if (nFilters%2!=0) nFilters++; //number of filters must be divisible by 2
 		h_input          = (float2 *)malloc(nTimesamples*sizeof(float2));
@@ -302,17 +313,6 @@ int main(int argc, char* argv[]) {
 	size_t filter_size_padded = nFilters*CONV_SIZE;
 	h_filters_padded = (float2*)malloc(filter_size_padded*sizeof(float2));
 	Pad_templates(h_filters, h_filters_padded, filter_length, CONV_SIZE, nFilters);
-	
-	//----------------> Results
-	double execution_time = 0;
-	Performance_results CONV_cuFFT;
-	CONV_cuFFT.Assign(nTimesamples, filter_length, nFilters, nRuns, reglim, CONV_SIZE, nFilters, "CONV_kFFT.dat", "two");
-	
-	int offset           = filter_length/2; // we assume that filter is centered around zero
-	int useful_part_size = CONV_SIZE - filter_length + 1;
-	int nConvolutions    = nTimesamples/useful_part_size;
-	if( (nTimesamples%useful_part_size)>0 ) nConvolutions++;
-	if( useful_part_size<=1) {printf("Filter length is too long. Increase FFT length.\n");exit(1);}
 	
 	size_t output_size = nFilters*useful_part_size*nConvolutions;
 	h_output = (float2*)malloc(output_size*sizeof(float2));
