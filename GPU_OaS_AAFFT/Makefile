@@ -21,14 +21,14 @@ endif
 
 all: clean onefilter twofilters
 
-onefilter: CONV_1f.o  CONV-32bit_AAFFT-T.o Makefile
-	$(NVCC) -o CONV_1f.exe CONV_1f.o CONV-32bit_AAFFT-T.o $(LIB) $(NVCCFLAGS)
+onefilter: CONV_1f.o  CONV-32bit_customFFT.o Makefile
+	$(NVCC) -o CONV_1f.exe CONV_1f.o CONV-32bit_customFFT.o $(LIB) $(NVCCFLAGS)
 	
-twofilters: CONV_2f.o  CONV-32bit_AAFFT-T.o Makefile
-	$(NVCC) -o CONV_2f.exe CONV_2f.o CONV-32bit_AAFFT-T.o $(LIB) $(NVCCFLAGS)
+twofilters: CONV_2f.o  CONV-32bit_customFFT.o Makefile
+	$(NVCC) -o CONV_2f.exe CONV_2f.o CONV-32bit_customFFT.o $(LIB) $(NVCCFLAGS)
 
-CONV-32bit_AAFFT-T.o: timer.h utils_cuda.h
-	$(NVCC) -c CONV-32bit_AAFFT-T.cu $(NVCCFLAGS)
+CONV-32bit_customFFT.o: timer.h utils_cuda.h
+	$(NVCC) -c CONV-32bit_customFFT.cu $(NVCCFLAGS)
 
 CONV_1f.o: CONV_1f.cpp
 	$(GCC) -c CONV_1f.cpp $(GCC_OPTS)
@@ -37,6 +37,6 @@ CONV_2f.o: CONV_2f.cpp
 	$(GCC) -c CONV_2f.cpp $(GCC_OPTS)
 	
 clean:	
-	rm -f *.o *.~ $(ANALYZE)
+	rm -f *.o *.~ CONV_*.exe
 
 
