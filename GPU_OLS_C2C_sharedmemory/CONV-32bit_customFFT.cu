@@ -743,7 +743,7 @@ __global__ void k_GPU_conv_OLS_via_customFFT(
 	
 	// Loading signal segment
 	prepare_signal_4elem<const_params>(s_input_1, d_input_signal, signal_length, useful_part_size, offset);
-	
+	offset = ((const_params::fft_length - useful_part_size + 1)>>1);
 	// Forward FFT on input signal
 	CT_DIF_FFT_4way<const_params>(s_input_1);
 	
@@ -794,9 +794,6 @@ __global__ void k_GPU_conv_OLS_via_customFFT(
 		
 		__syncthreads();
 	}
-	
-	
-	
 }
 
 
@@ -1031,7 +1028,7 @@ void convolution_via_customFFT_benchmark(float2 *d_input_signal, float2 *d_outpu
 //*****************************************************************************
 //*****************************************************************************
 
-int GPU_convolution_OLS_customFFT(float2 *h_input_signal, float2 *h_output_plane, float2 *h_filters, int signal_length, int convolution_length, int filter_length, int nFilters, int nRuns, int kernel_type, double *execution_time){
+int GPU_convolution_OLS_customFFT(float2 *h_input_signal, float2 *h_output_plane, float2 *h_filters, int signal_length, int convolution_length, int filter_length, int past_filter_samples, int nFilters, int nRuns, int kernel_type, double *execution_time){
 	//---------> Initial nVidia stuff
 	int devCount;
 	size_t free_mem, total_mem;
@@ -1051,7 +1048,7 @@ int GPU_convolution_OLS_customFFT(float2 *h_input_signal, float2 *h_output_plane
 	GpuTimer timer;
 	
 	//----> Calculating variables for overlap-and-save
-	int offset           = filter_length/2; // we assume that filter is centred around zero
+	int offset           = past_filter_samples;
 	int useful_part_size = convolution_length - filter_length + 1;
 	int nConvolutions    = (signal_length + useful_part_size - 1)/useful_part_size;
 	

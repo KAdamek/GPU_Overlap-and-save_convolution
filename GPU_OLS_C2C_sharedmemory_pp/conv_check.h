@@ -9,7 +9,7 @@
 
 double max_error = 1.0e-4;
 
-void CPU_time_domain(float2 *h_input, float2 *h_CPU_output_timedomain, float2 *h_filters, int signal_length, int filter_length, int nFilters){
+void CPU_time_domain(float2 *h_input, float2 *h_CPU_output_timedomain, float2 *h_filters, int signal_length, int filter_length, int past_filter_samples, int nFilters){
 	for(int f=0; f<nFilters; f++){
 		printf(".");  fflush(stdout);
 		for(int s=0; s<signal_length; s++){
@@ -19,7 +19,7 @@ void CPU_time_domain(float2 *h_input, float2 *h_CPU_output_timedomain, float2 *h
 				int filter_pos = filter_length - 1 - i;
 				float2 fv, sv;
 				fv = h_filters[f*filter_length + filter_pos];
-				int signal_pos = (s + i - (filter_length>>1));
+				int signal_pos = (s + i - past_filter_samples);
 				if(signal_pos>=0 && signal_pos<signal_length) sv = h_input[signal_pos];
 				else {sv.x = 0; sv.y = 0;}
 				ac.x = ac.x + sv.x*fv.x - sv.y*fv.y;
@@ -124,7 +124,7 @@ int Compare_data(float2 *CPU_result, float2 *GPU_result, float CPU_scale, float 
 }
 
 
-void Full_CONV_check(float2 *GPU_result, float2 *h_input, float2 *h_filters, int signal_length, int filter_length, int useful_part_size, int offset, int conv_length, int nConvolutions, int nFilters, float h, double *cumulative_error, double *mean_error){
+void Full_CONV_check(float2 *GPU_result, float2 *h_input, float2 *h_filters, int signal_length, int filter_length, int past_filter_samples, int useful_part_size, int offset, int conv_length, int nConvolutions, int nFilters, float h, double *cumulative_error, double *mean_error){
 	size_t output_size_timedomain = (signal_length + filter_length - 1)*nFilters;
 	float2 *h_CPU_output_timedomain;
 	float2 *h_CPU_postprocessed;
@@ -134,7 +134,7 @@ void Full_CONV_check(float2 *GPU_result, float2 *h_input, float2 *h_filters, int
 	memset(h_CPU_postprocessed, 0.0, output_size_timedomain*sizeof(float2));
 	
 	printf("\n--> Time-domain convolution:");
-	CPU_time_domain(h_input, h_CPU_output_timedomain, h_filters, signal_length, filter_length, nFilters);
+	CPU_time_domain(h_input, h_CPU_output_timedomain, h_filters, signal_length, filter_length, past_filter_samples, nFilters);
 	
 	printf("\n--> Post-processing:\n");
 	CPU_postprocess(h_CPU_postprocessed, h_CPU_output_timedomain, (signal_length + filter_length - 1), nFilters, h);
