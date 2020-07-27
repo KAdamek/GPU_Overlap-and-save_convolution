@@ -3,14 +3,13 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
-#include <fftw3.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
 double max_error = 1.0e-4;
 
-void CPU_time_domain(float *h_input, float *h_CPU_output_timedomain, float *h_filters, int signal_length, int filter_length, int nFilters){
+void CPU_time_domain(float *h_input, float *h_CPU_output_timedomain, float *h_filters, int signal_length, int filter_length, int past_filter_samples, int nFilters){
 	for(int f=0; f<nFilters; f++){
 		printf(".");  fflush(stdout);
 		for(int s=0; s<signal_length; s++){
@@ -20,7 +19,7 @@ void CPU_time_domain(float *h_input, float *h_CPU_output_timedomain, float *h_fi
 				int filter_pos = filter_length - 1 - i;
 				float fv, sv;
 				fv = h_filters[f*filter_length + filter_pos];
-				int signal_pos = (s + i - (filter_length>>1));
+				int signal_pos = (s + i - past_filter_samples);
 				if(signal_pos>=0 && signal_pos<signal_length) sv = h_input[signal_pos];
 				else {sv = 0;}
 				ac = ac + sv*fv;
@@ -118,7 +117,7 @@ int Compare_data(float *CPU_result, float *GPU_result, float CPU_scale, float GP
 }
 
 
-void Full_CONV_check(float *GPU_result, float *h_input_real, float *h_filters, int signal_length, int filter_length, int useful_part_size, int offset, int conv_length, int nConvolutions, int nFilters, double *cumulative_error, double *mean_error){
+void Full_CONV_check(float *GPU_result, float *h_input_real, float *h_filters, int signal_length, int filter_length, int past_filter_samples, int useful_part_size, int offset, int conv_length, int nConvolutions, int nFilters, double *cumulative_error, double *mean_error){
 	float GPU_scale, CPU_scale;
 	int CPU_offset, GPU_offset, CPU_dim_x, GPU_dim_x, nSamples;
 	
@@ -129,7 +128,7 @@ void Full_CONV_check(float *GPU_result, float *h_input_real, float *h_filters, i
 	h_CPU_output_timedomain = (float *)malloc(output_size_timedomain*sizeof(float));
 	memset(h_CPU_output_timedomain, 0.0, output_size_timedomain*sizeof(float));
 	
-	CPU_time_domain(h_input_real, h_CPU_output_timedomain, h_filters, signal_length, filter_length, nFilters);
+	CPU_time_domain(h_input_real, h_CPU_output_timedomain, h_filters, signal_length, filter_length, past_filter_samples, nFilters);
 	
 	printf("\n--> Comparison to CPU time-domain:\n");
 	GPU_scale = conv_length/2;

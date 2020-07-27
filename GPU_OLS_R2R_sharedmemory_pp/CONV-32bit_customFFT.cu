@@ -373,20 +373,15 @@ __global__ void FFT_GPU_R2C_C2R_external(float2 *d_input, float2* d_output) {
 
 
 template<class const_params>
-__device__ __inline__ void prepare_signal_4elem(float2* s_signal, float2 const* __restrict__ d_input_signal, int signal_length, int useful_part_size, int offset) {
+__device__ __inline__ void prepare_signal_4elem(float* s_signal, float const* __restrict__ d_input_signal, int signal_length, int useful_part_size, int offset) {
 	int pos = blockIdx.x*useful_part_size;
 	
-	//if(blockIdx.x == 0 && threadIdx.x == 0) printf("FFT length: %d; BlockDim.x: %d; useful_part_size: %d; offset: %d;\n", const_params::fft_length, blockDim.x, useful_part_size, offset);
-	pos = blockIdx.x*useful_part_size + threadIdx.x - offset;
-	s_signal[threadIdx.x].x                                   = 0;
-	s_signal[threadIdx.x].y                                   = 0;
-	s_signal[threadIdx.x + const_params::fft_quarter].x       = 0;
-	s_signal[threadIdx.x + const_params::fft_quarter].y       = 0;
-	s_signal[threadIdx.x + const_params::fft_half].x          = 0;
-	s_signal[threadIdx.x + const_params::fft_half].y          = 0;
-	s_signal[threadIdx.x + const_params::fft_threequarters].x = 0;
-	s_signal[threadIdx.x + const_params::fft_threequarters].y = 0;
+	s_signal[threadIdx.x]                                   = 0;
+	s_signal[threadIdx.x + const_params::fft_quarter]       = 0;
+	s_signal[threadIdx.x + const_params::fft_half]          = 0;
+	s_signal[threadIdx.x + const_params::fft_threequarters] = 0;
 	
+	pos = blockIdx.x*useful_part_size + threadIdx.x - offset;
 	if( pos>=0 && pos<signal_length ) 
 		s_signal[threadIdx.x] = d_input_signal[pos];
 	
@@ -398,34 +393,97 @@ __device__ __inline__ void prepare_signal_4elem(float2* s_signal, float2 const* 
 	
 	if( (pos + const_params::fft_threequarters)>=0 && (pos + const_params::fft_threequarters)<signal_length ) 
 		s_signal[threadIdx.x + const_params::fft_threequarters] = d_input_signal[pos + const_params::fft_threequarters];
+	
+	
+	/*
+	if(blockIdx.x == 0) printf("FFT length: %d; BlockDim.x: %d; useful_part_size: %d; offset: %d; signal:[%f, %f, %f, %f]\n", 
+		const_params::fft_length, 
+		blockDim.x, 
+		useful_part_size, 
+		offset, 
+		s_signal[threadIdx.x], 
+		s_signal[threadIdx.x + const_params::fft_quarter], 
+		s_signal[threadIdx.x + const_params::fft_half],
+		s_signal[threadIdx.x + const_params::fft_threequarters]);
+	*/
+	
+	s_signal[threadIdx.x + const_params::fft_length]                                   = 0;
+	s_signal[threadIdx.x + const_params::fft_length + const_params::fft_quarter]       = 0;
+	s_signal[threadIdx.x + const_params::fft_length + const_params::fft_half]          = 0;
+	s_signal[threadIdx.x + const_params::fft_length + const_params::fft_threequarters] = 0;
+	
+	pos = blockIdx.x*useful_part_size + threadIdx.x + const_params::fft_length - offset;
+	if( pos>=0 && pos<signal_length ) 
+		s_signal[threadIdx.x + const_params::fft_length] = d_input_signal[pos];
+	
+	if( (pos + const_params::fft_quarter)>=0 && (pos + const_params::fft_quarter)<signal_length ) 
+		s_signal[threadIdx.x + const_params::fft_length + const_params::fft_quarter] = d_input_signal[pos + const_params::fft_quarter];
+		
+	if( (pos + const_params::fft_half)>=0 && (pos + const_params::fft_half)<signal_length ) 	
+		s_signal[threadIdx.x + const_params::fft_length + const_params::fft_half] = d_input_signal[pos + const_params::fft_half];
+	
+	if( (pos + const_params::fft_threequarters)>=0 && (pos + const_params::fft_threequarters)<signal_length ) 
+		s_signal[threadIdx.x + const_params::fft_length + const_params::fft_threequarters] = d_input_signal[pos + const_params::fft_threequarters];
 }
 
+template<class const_params>
+__inline__ __device__ void GPU_conv_assign_signal(float2 *r_signal, float2* s_input){
+	//*r_signal0 = s_input_1[threadIdx.x];
+	//*r_signal1 = s_input_1[threadIdx.x + const_params::fft_quarter];
+	//*r_signal2 = s_input_1[threadIdx.x + const_params::fft_half];
+	//*r_signal3 = s_input_1[threadIdx.x + const_params::fft_threequarters];
+	r_signal[0] = s_input[threadIdx.x];
+	r_signal[1] = s_input[threadIdx.x + const_params::fft_quarter];
+	r_signal[2] = s_input[threadIdx.x + const_params::fft_half];
+	r_signal[3] = s_input[threadIdx.x + const_params::fft_threequarters];
+}
 
-__inline__ __device__ float2 post_process(float *s_input, int sm_pos, int offset, float h){
-	float2 left, right, result;
+template<class const_params>
+__inline__ __device__  void GPU_conv_complex_multiplication(int filter_id, float2 *r_signal, float2 const* __restrict__ d_filters, float2 *s_input) {
+	float2 r_filter_1[4];
+	int pos;
+	
+	pos = filter_id*const_params::fft_length + threadIdx.x;
+	r_filter_1[0]=__ldg(&d_filters[pos]);
+	r_filter_1[1]=__ldg(&d_filters[pos + const_params::fft_quarter]);
+	r_filter_1[2]=__ldg(&d_filters[pos + const_params::fft_half]);
+	r_filter_1[3]=__ldg(&d_filters[pos + const_params::fft_threequarters]);
+	
+	// Convolution (complex multiplication)
+	s_input[threadIdx.x].x                                   = r_filter_1[0].x*r_signal[0].x - r_filter_1[0].y*r_signal[0].y;
+	s_input[threadIdx.x].y                                   = r_filter_1[0].x*r_signal[0].y + r_filter_1[0].y*r_signal[0].x;
+	s_input[threadIdx.x + const_params::fft_quarter].x       = r_filter_1[1].x*r_signal[1].x - r_filter_1[1].y*r_signal[1].y;
+	s_input[threadIdx.x + const_params::fft_quarter].y       = r_filter_1[1].x*r_signal[1].y + r_filter_1[1].y*r_signal[1].x;
+	s_input[threadIdx.x + const_params::fft_half].x          = r_filter_1[2].x*r_signal[2].x - r_filter_1[2].y*r_signal[2].y;
+	s_input[threadIdx.x + const_params::fft_half].y          = r_filter_1[2].x*r_signal[2].y + r_filter_1[2].y*r_signal[2].x;
+	s_input[threadIdx.x + const_params::fft_threequarters].x = r_filter_1[3].x*r_signal[3].x - r_filter_1[3].y*r_signal[3].y;
+	s_input[threadIdx.x + const_params::fft_threequarters].y = r_filter_1[3].x*r_signal[3].y + r_filter_1[3].y*r_signal[3].x;
+	
+	if(threadIdx.x==0){
+		s_input[threadIdx.x].x = r_filter_1[0].x*r_signal[0].x;
+		s_input[threadIdx.x].y = r_filter_1[0].y*r_signal[0].y;
+	}
+}	 
+
+
+__inline__ __device__ float post_process(float *s_input, int sm_pos, int offset, float h){
+	float left, right, result;
 	if(blockIdx.x==0){
 		if((sm_pos - offset)==0){
-			left.x  = s_input[sm_pos];
-			right.x = s_input[sm_pos+1];
-			left.y  = s_input[sm_pos];
-			right.y = s_input[sm_pos+2];
+			left  = s_input[sm_pos];
+			right = s_input[sm_pos+1];
 		}
 		else {
-			left.x  = s_input[sm_pos-1];
-			right.x = s_input[sm_pos+1];
-			left.y  = s_input[sm_pos];
-			right.y = s_input[sm_pos+2];
+			left  = s_input[sm_pos-1];
+			right = s_input[sm_pos+1];
 		}
 	}
 	else {
-		left.x  = s_input[sm_pos-1];
-		right.x = s_input[sm_pos+1];
-		left.y  = s_input[sm_pos];
-		right.y = s_input[sm_pos+2];
+		left  = s_input[sm_pos-1];
+		right = s_input[sm_pos+1];
 	}
 	
-	result.x = (left.x - right.x)/(2.0f*h);
-	result.y = (left.y - right.y)/(2.0f*h);
+	result = (left - right)/(2.0f*h);
 	
 	//if(blockIdx.x==0) printf("th:%d; sm_pos=%d; left=[%f;%f] right=[%f;%f]; result=[%f;%f]\n", threadIdx.x, sm_pos, left.x, left.y, right.x, right.y, result.x/256.0, result.y/256.0);
 	
@@ -434,8 +492,8 @@ __inline__ __device__ float2 post_process(float *s_input, int sm_pos, int offset
 
 template<class const_params>
 __global__ void k_GPU_conv_OLS_R2R_via_customFFT(
-			float2 const* __restrict__ d_input_signal, 
-			float2 *d_output_plane, 
+			float const* __restrict__ d_input_signal, 
+			float *d_output_plane, 
 			float2 const* __restrict__ d_filters_freqdom, 
 			int signal_length, 
 			int useful_part_size, 
@@ -443,82 +501,99 @@ __global__ void k_GPU_conv_OLS_R2R_via_customFFT(
 			int offset, 
 			int nConvolutions, 
 			int nFilters) {
-	__shared__ float2 s_input_1[const_params::fft_length];
-	float2 r_filter_1[4];
-	float2 signal[4];
+	__shared__ float s_input_1[2*const_params::fft_length];
+	float2 r_signal[4];
 	int pos, t;
 	
 	// Loading signal segment
 	prepare_signal_4elem<const_params>(s_input_1, d_input_signal, signal_length, useful_part_size, offset);
+	offset = (2*const_params::fft_length - useful_part_size + 1)>>1;
 	
+	__syncthreads();
+		
 	// Forward FFT on input signal
-	do_FFT_Stockham_R2C_C2R<const_params,FFT_forward>(s_input_1);
+	do_FFT_Stockham_R2C_C2R<const_params,FFT_forward>((float2 *) s_input_1);
 	
 	
-	/*
-	if( blockIdx.x==0 ) {
-		printf("Th:%d; vl:[%f;%f|%f;%f|%f;%f|%f;%f]\n", threadIdx.x, 
-		s_input_1[threadIdx.x].x, s_input_1[threadIdx.x].y, 
-		s_input_1[threadIdx.x + const_params::fft_quarter].x, s_input_1[threadIdx.x + const_params::fft_quarter].y, 
-		s_input_1[threadIdx.x + const_params::fft_half].x, s_input_1[threadIdx.x + const_params::fft_half].y, 
-		s_input_1[threadIdx.x + const_params::fft_threequarters].x, s_input_1[threadIdx.x + const_params::fft_threequarters].y);
-		printf("nFilters=%d\n", nFilters);
-	}
-	*/
 	
 	// Storing FFTed signal for reuse
-	signal[0] = s_input_1[threadIdx.x];
-	signal[1] = s_input_1[threadIdx.x + const_params::fft_quarter];
-	signal[2] = s_input_1[threadIdx.x + const_params::fft_half];
-	signal[3] = s_input_1[threadIdx.x + const_params::fft_threequarters];
+	GPU_conv_assign_signal<const_params>(r_signal, (float2 *) s_input_1);
 	
 	for(t=0; t<nFilters; t++){
-		// Loading filters
-		pos = t*const_params::fft_length + threadIdx.x;
-		r_filter_1[0]=__ldg(&d_filters_freqdom[pos]);
-		r_filter_1[1]=__ldg(&d_filters_freqdom[pos + const_params::fft_quarter]);
-		r_filter_1[2]=__ldg(&d_filters_freqdom[pos + const_params::fft_half]);
-		r_filter_1[3]=__ldg(&d_filters_freqdom[pos + const_params::fft_threequarters]);
-		
-		// Convolution (complex multiplication)
-		s_input_1[threadIdx.x].x                                   = r_filter_1[0].x*signal[0].x - r_filter_1[0].y*signal[0].y;
-		s_input_1[threadIdx.x].y                                   = r_filter_1[0].x*signal[0].y + r_filter_1[0].y*signal[0].x;
-		s_input_1[threadIdx.x + const_params::fft_quarter].x       = r_filter_1[1].x*signal[1].x - r_filter_1[1].y*signal[1].y;
-		s_input_1[threadIdx.x + const_params::fft_quarter].y       = r_filter_1[1].x*signal[1].y + r_filter_1[1].y*signal[1].x;
-		s_input_1[threadIdx.x + const_params::fft_half].x          = r_filter_1[2].x*signal[2].x - r_filter_1[2].y*signal[2].y;
-		s_input_1[threadIdx.x + const_params::fft_half].y          = r_filter_1[2].x*signal[2].y + r_filter_1[2].y*signal[2].x;
-		s_input_1[threadIdx.x + const_params::fft_threequarters].x = r_filter_1[3].x*signal[3].x - r_filter_1[3].y*signal[3].y;
-		s_input_1[threadIdx.x + const_params::fft_threequarters].y = r_filter_1[3].x*signal[3].y + r_filter_1[3].y*signal[3].x;
-		
-		if(threadIdx.x==0){
-			s_input_1[threadIdx.x].x = r_filter_1[0].x*signal[0].x;
-			s_input_1[threadIdx.x].y = r_filter_1[0].y*signal[0].y;
-		}
-		
-		/*
-		if( blockIdx.x==0 && t==0) printf("Th:%d; vl:[%f;%f|%f;%f|%f;%f|%f;%f]\n", threadIdx.x, 
-			s_input_1[threadIdx.x].x, s_input_1[threadIdx.x].y, 
-			s_input_1[threadIdx.x + const_params::fft_quarter].x, s_input_1[threadIdx.x + const_params::fft_quarter].y, 
-			s_input_1[threadIdx.x + const_params::fft_half].x, s_input_1[threadIdx.x + const_params::fft_half].y, 
-			s_input_1[threadIdx.x + const_params::fft_threequarters].x, s_input_1[threadIdx.x + const_params::fft_threequarters].y);
-		*/
+		GPU_conv_complex_multiplication<const_params>(t, r_signal, d_filters_freqdom, (float2 *) s_input_1);
 		
 		__syncthreads();
 		
 		//----------> Inverse FFT
-		do_FFT_Stockham_R2C_C2R<const_params,FFT_inverse>(s_input_1);
+		do_FFT_Stockham_R2C_C2R<const_params,FFT_inverse>((float2 *) s_input_1);
 		//----------<
 		
 		
-		/*
-		if( blockIdx.x==0 && t==1) printf("Th:%d; vl:[%f;%f|%f;%f|%f;%f|%f;%f]\n", threadIdx.x, 
-			s_input_1[threadIdx.x].x, s_input_1[threadIdx.x].y, 
-			s_input_1[threadIdx.x + const_params::fft_quarter].x, s_input_1[threadIdx.x + const_params::fft_quarter].y, 
-			s_input_1[threadIdx.x + const_params::fft_half].x, s_input_1[threadIdx.x + const_params::fft_half].y, 
-			s_input_1[threadIdx.x + const_params::fft_threequarters].x, s_input_1[threadIdx.x + const_params::fft_threequarters].y);
-		*/
-				
+		pos = t*useful_part_size*nConvolutions + blockIdx.x*useful_part_size + threadIdx.x;
+		if( threadIdx.x>=offset && threadIdx.x<(useful_part_size+offset) ) {
+			#ifdef POST_PROCESS
+			d_output_plane[pos - offset] = post_process(s_input_1, threadIdx.x, offset, h);
+			#else
+			d_output_plane[pos - offset] = s_input_1[threadIdx.x];
+			#endif
+		}
+		if( (threadIdx.x + const_params::fft_quarter)>=offset && (threadIdx.x + const_params::fft_quarter)<(useful_part_size+offset) ) {
+			#ifdef POST_PROCESS
+			d_output_plane[pos + const_params::fft_quarter - offset] = post_process(s_input_1, threadIdx.x + const_params::fft_quarter, offset, h);
+			#else
+			d_output_plane[pos + const_params::fft_quarter - offset] = s_input_1[threadIdx.x + const_params::fft_quarter];
+			#endif
+		}
+		if( (threadIdx.x + const_params::fft_half)>=offset && (threadIdx.x + const_params::fft_half)<(useful_part_size+offset) ) {
+			#ifdef POST_PROCESS
+			d_output_plane[pos + const_params::fft_half - offset] = post_process(s_input_1, threadIdx.x + const_params::fft_half, offset, h);
+			#else
+			d_output_plane[pos + const_params::fft_half - offset] = s_input_1[threadIdx.x + const_params::fft_half];
+			#endif
+		}
+		if( (threadIdx.x + const_params::fft_threequarters)>=offset && (threadIdx.x + const_params::fft_threequarters)<(useful_part_size+offset) ) {
+			#ifdef POST_PROCESS
+			d_output_plane[pos + const_params::fft_threequarters - offset] = post_process(s_input_1, threadIdx.x + const_params::fft_threequarters, offset, h);
+			#else
+			d_output_plane[pos + const_params::fft_threequarters - offset] = s_input_1[threadIdx.x + const_params::fft_threequarters];
+			#endif
+		}
+
+		pos = t*useful_part_size*nConvolutions + blockIdx.x*useful_part_size + threadIdx.x + const_params::fft_length;
+		//if(blockIdx.x==0 && (t==0)) printf("th:%d; pos=%d; offset=%d; useful=%d; output:%f\n", threadIdx.x, pos, offset, useful_part_size, s_input_1[threadIdx.x]);
+		int tmp = threadIdx.x +  + const_params::fft_length;
+		if( tmp>=offset && tmp<(useful_part_size+offset) ) {
+			#ifdef POST_PROCESS
+			d_output_plane[pos - offset] = post_process(s_input_1, tmp, offset, h);
+			#else
+			d_output_plane[pos - offset] = s_input_1[tmp];
+			#endif
+		}
+		if( (tmp + const_params::fft_quarter)>=offset && (tmp + const_params::fft_quarter)<(useful_part_size+offset) ) {
+			#ifdef POST_PROCESS
+			d_output_plane[pos + const_params::fft_quarter - offset] = post_process(s_input_1, tmp + const_params::fft_quarter, offset, h);
+			#else
+			d_output_plane[pos + const_params::fft_quarter - offset] = s_input_1[tmp + const_params::fft_quarter];
+			#endif
+		}
+		if( (tmp + const_params::fft_half)>=offset && (tmp + const_params::fft_half)<(useful_part_size+offset) ) {
+			#ifdef POST_PROCESS
+			d_output_plane[pos + const_params::fft_half - offset] = post_process(s_input_1, tmp + const_params::fft_half, offset, h);
+			#else
+			d_output_plane[pos + const_params::fft_half - offset] = s_input_1[tmp + const_params::fft_half];
+			#endif
+		}
+		if( (tmp + const_params::fft_threequarters)>=offset && (tmp + const_params::fft_threequarters)<(useful_part_size+offset) ) {
+			#ifdef POST_PROCESS
+			d_output_plane[pos + const_params::fft_threequarters - offset] = post_process(s_input_1, tmp + const_params::fft_threequarters, offset, h);
+			#else
+			d_output_plane[pos + const_params::fft_threequarters - offset] = s_input_1[tmp + const_params::fft_threequarters];
+			#endif
+		}
 		
+		
+		
+		/*
 		// Writing out the clean part of the segment
 		pos = t*useful_part_size*nConvolutions + blockIdx.x*useful_part_size + threadIdx.x;
 		//if(blockIdx.x==0 && (t==1)) printf("th:%d; pos=%d;\n", threadIdx.x, pos);
@@ -550,6 +625,7 @@ __global__ void k_GPU_conv_OLS_R2R_via_customFFT(
 			d_output_plane[pos + const_params::fft_threequarters - offset] = s_input_1[threadIdx.x + const_params::fft_threequarters];
 			#endif
 		}
+		*/
 		
 		__syncthreads();
 	}
@@ -598,7 +674,7 @@ void forwardCustomFFT(float2 *d_output, float *d_input, int FFT_size, int nFFTs,
 }
 
 
-void conv_OLS_R2R_customFFT(float2 *d_input_signal, float2 *d_output_plane, float2 *d_filters, int signal_length, int convolution_length, int useful_part_size, float h, int offset, int nConvolutions, int nFilters){
+void conv_OLS_R2R_customFFT(float *d_input_signal, float *d_output_plane, float2 *d_filters, int signal_length, int convolution_length, int useful_part_size, float h, int offset, int nConvolutions, int nFilters){
 	dim3 gridSize(nConvolutions, 1, 1);
 	dim3 blockSize((convolution_length>>1)/4, 1, 1);
 	//printf("gridSize:[%d;%d;%d]; blockSize:[%d;%d;%d];\n",gridSize.x, gridSize.y, gridSize.z, blockSize.x, blockSize.y, blockSize.z);
@@ -645,7 +721,7 @@ void convolution_via_customFFT_benchmark(float *d_input_signal, float *d_output_
 	checkCudaErrors(cudaGetLastError());
 	
 	CONV_init();
-	conv_OLS_R2R_customFFT((float2 *) d_input_signal, (float2 *) d_output_plane, d_filters_freqdom, (signal_length>>1), convolution_length, (useful_part_size>>1), h, (offset>>1), nConvolutions, nFilters);
+	conv_OLS_R2R_customFFT(d_input_signal, d_output_plane, d_filters_freqdom, signal_length, convolution_length, useful_part_size, h, offset, nConvolutions, nFilters);
 	
 	checkCudaErrors(cudaGetLastError());
 	
@@ -661,8 +737,7 @@ void convolution_via_customFFT_benchmark(float *d_input_signal, float *d_output_
 //*****************************************************************************
 //*****************************************************************************
 //*****************************************************************************
-
-int GPU_convolution_OLS_customFFT(float *h_input_signal, float *h_output_plane, float *h_filters_timedom, int signal_length, int convolution_length, int filter_length, int nFilters, int nRuns, float h, int offset_modifier, int device, double *execution_time){
+int GPU_convolution_OLS_customFFT(float *h_input_signal, float *h_output_plane, float *h_filters_timedom, int signal_length, int convolution_length, int filter_length, int past_filter_samples, int nFilters, int nRuns, float h, int offset_modifier, int device, double *execution_time){
 	//---------> Initial nVidia stuff
 	int devCount;
 	size_t free_mem, total_mem;
@@ -682,9 +757,9 @@ int GPU_convolution_OLS_customFFT(float *h_input_signal, float *h_output_plane, 
 	GpuTimer timer;
 	
 	//----> Calculating variables for overlap-and-save
-	int offset           = (filter_length + offset_modifier)/2;
+	int offset           = past_filter_samples + (offset_modifier)/2;
 	int useful_part_size = convolution_length - (filter_length + offset_modifier) + 1;
-	useful_part_size = 2*(useful_part_size>>1);
+	//useful_part_size = 2*(useful_part_size>>1);
 	int nConvolutions    = (signal_length + useful_part_size - 1)/useful_part_size;
 	
 	//int itemp = (int) ((convolution_length - filter_length)>>1);

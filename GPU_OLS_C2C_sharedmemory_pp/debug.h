@@ -4,4 +4,4 @@
 #define CHECK true
 
 #define DEVICEID 0
-#define POST_PROCESS
+//#define POST_PROCESS
