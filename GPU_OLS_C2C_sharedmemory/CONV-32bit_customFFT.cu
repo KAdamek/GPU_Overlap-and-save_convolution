@@ -762,14 +762,14 @@ __global__ void k_GPU_conv_OLS_via_customFFT(
 		r_filter_1[3]=__ldg(&d_filters[pos + const_params::fft_length_three_quarters]);
 
 		// Convolution (complex multiplication)
-		s_input_1[threadIdx.x].x                                           = r_filter_1[0].x*signal[0].x - r_filter_1[0].y*signal[0].y;
-		s_input_1[threadIdx.x].y                                           = r_filter_1[0].x*signal[0].y + r_filter_1[0].y*signal[0].x;
-		s_input_1[threadIdx.x + const_params::fft_length_quarter].x        = r_filter_1[1].x*signal[1].x - r_filter_1[1].y*signal[1].y;
-		s_input_1[threadIdx.x + const_params::fft_length_quarter].y        = r_filter_1[1].x*signal[1].y + r_filter_1[1].y*signal[1].x;
-		s_input_1[threadIdx.x + const_params::fft_length_half].x           = r_filter_1[2].x*signal[2].x - r_filter_1[2].y*signal[2].y;
-		s_input_1[threadIdx.x + const_params::fft_length_half].y           = r_filter_1[2].x*signal[2].y + r_filter_1[2].y*signal[2].x;
-		s_input_1[threadIdx.x + const_params::fft_length_three_quarters].x = r_filter_1[3].x*signal[3].x - r_filter_1[3].y*signal[3].y;
-		s_input_1[threadIdx.x + const_params::fft_length_three_quarters].y = r_filter_1[3].x*signal[3].y + r_filter_1[3].y*signal[3].x;
+		s_input_1[threadIdx.x].x                                           = (r_filter_1[0].x*signal[0].x - r_filter_1[0].y*signal[0].y)/((float) const_params::fft_length);
+		s_input_1[threadIdx.x].y                                           = (r_filter_1[0].x*signal[0].y + r_filter_1[0].y*signal[0].x)/((float) const_params::fft_length);
+		s_input_1[threadIdx.x + const_params::fft_length_quarter].x        = (r_filter_1[1].x*signal[1].x - r_filter_1[1].y*signal[1].y)/((float) const_params::fft_length);
+		s_input_1[threadIdx.x + const_params::fft_length_quarter].y        = (r_filter_1[1].x*signal[1].y + r_filter_1[1].y*signal[1].x)/((float) const_params::fft_length);
+		s_input_1[threadIdx.x + const_params::fft_length_half].x           = (r_filter_1[2].x*signal[2].x - r_filter_1[2].y*signal[2].y)/((float) const_params::fft_length);
+		s_input_1[threadIdx.x + const_params::fft_length_half].y           = (r_filter_1[2].x*signal[2].y + r_filter_1[2].y*signal[2].x)/((float) const_params::fft_length);
+		s_input_1[threadIdx.x + const_params::fft_length_three_quarters].x = (r_filter_1[3].x*signal[3].x - r_filter_1[3].y*signal[3].y)/((float) const_params::fft_length);
+		s_input_1[threadIdx.x + const_params::fft_length_three_quarters].y = (r_filter_1[3].x*signal[3].y + r_filter_1[3].y*signal[3].x)/((float) const_params::fft_length);
 		
 		__syncthreads();
 		

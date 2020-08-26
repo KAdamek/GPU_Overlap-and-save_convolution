@@ -109,12 +109,13 @@ void Full_CONV_check(float2 *GPU_result, float2 *h_input, float2 *h_filters, int
 	
 	printf("\n--> Comparison to CPU time-domain:\n");
 	GPU_scale = conv_length;
+	GPU_scale = 1.0;
 	CPU_scale = 1.0;
 	GPU_offset = 0;
 	CPU_offset = 0;
 	GPU_dim_x = nConvolutions*useful_part_size;
 	CPU_dim_x = (signal_length + filter_length - 1);
-	nSamples = signal_length;	
+	nSamples = signal_length;
 	Compare_data(h_CPU_output_timedomain, GPU_result, CPU_scale, GPU_scale, CPU_offset, GPU_offset, CPU_dim_x, GPU_dim_x, nFilters, nSamples, useful_part_size, cumulative_error, mean_error);
 	//printf("----> Total error: %e; Mean error: %e\n", (double) *cumulative_error, (double) *mean_error);
 	if((*mean_error)<1.0e-4) printf("PASSED\n");

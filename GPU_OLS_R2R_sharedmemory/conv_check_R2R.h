@@ -132,6 +132,7 @@ void Full_CONV_check(float *GPU_result, float *h_input_real, float *h_filters, i
 	
 	printf("\n--> Comparison to CPU time-domain:\n");
 	GPU_scale = conv_length/2;
+	GPU_scale = 1.0;
 	CPU_scale = 1.0;
 	GPU_offset = 0;
 	CPU_offset = 0;

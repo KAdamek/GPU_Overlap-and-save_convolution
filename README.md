@@ -1,6 +1,7 @@
 README v0.1 / 1 OCTOBER 2019
 27 JULY 2020 - convolutions with shared memory FFT can now process both odd and even length filters with arbitrary number of past and present samples not only odd time centred filters as before
-
+25 AUGUST 2020 - convolved signal is now multiplied by the normalization constant equal to the size of the FFT
+  
 # Convolution using shared memory overlap-and-save method on NVIDIA GPUs
 Overlap-and-save method of calculation linear one-dimensional convolution on NVIDIA GPUs using shared memory. Out implementation of the overlap-and-save method uses shared memory implementation of the FFT algorithm to increase performance of one-dimensional complex-to-complex or real-to-real convolutions. The speed-up achieved depends on the filter length up to 2.5x faster for filter length 257 samples for complex-to-complex (C2C) and up to 4x for real-to-real (R2R) convolution.
 

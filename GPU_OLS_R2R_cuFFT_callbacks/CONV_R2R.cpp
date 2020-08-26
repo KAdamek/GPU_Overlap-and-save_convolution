@@ -117,11 +117,9 @@ int Load_signal(char *filename, int *nSamples, float **data){
 			FILEIN.clear();
 			FILEIN.seekg(0,ios::beg);
 			
-			cislo=0;
-			while (!FILEIN.eof()){
+			for (cislo = 0; cislo < file_size; cislo++) {
 				FILEIN >> real >> imaginary;
 				(*data)[cislo] = sqrt(real*real + imaginary*imaginary);
-				cislo++;
 			}
 		}
 		else {
@@ -164,11 +162,9 @@ int Load_filters(char *filename, int *nFilters, int *filter_length, float **data
 			FILEIN.clear();
 			FILEIN.seekg(0,ios::beg);
 
-			cislo=0;
-			while (!FILEIN.eof()){
+			for (cislo=0; cislo < filter_size; cislo++) {
 				FILEIN >> real >> imaginary;
 				(*data)[cislo] = real;
-				cislo++;
 			}
 		}
 		else {

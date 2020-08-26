@@ -492,32 +492,32 @@ __global__ void k_GPU_conv_OLS_R2R_via_customFFT(
 		pos = t*useful_part_size*nConvolutions + blockIdx.x*useful_part_size + threadIdx.x;
 		//if(blockIdx.x==0 && (t==0)) printf("th:%d; pos=%d; offset=%d; useful=%d; output:%f\n", threadIdx.x, pos, offset, useful_part_size, s_input_1[threadIdx.x]);
 		if( threadIdx.x>=offset && threadIdx.x<(useful_part_size+offset) ) {
-			d_output_plane[pos - offset] = s_input_1[threadIdx.x];
+			d_output_plane[pos - offset] = s_input_1[threadIdx.x]/((float) const_params::fft_length);
 		}
 		if( (threadIdx.x + const_params::fft_quarter)>=offset && (threadIdx.x + const_params::fft_quarter)<(useful_part_size+offset) ) {
-			d_output_plane[pos + const_params::fft_quarter - offset] = s_input_1[threadIdx.x + const_params::fft_quarter];
+			d_output_plane[pos + const_params::fft_quarter - offset] = s_input_1[threadIdx.x + const_params::fft_quarter]/((float) const_params::fft_length);
 		}
 		if( (threadIdx.x + const_params::fft_half)>=offset && (threadIdx.x + const_params::fft_half)<(useful_part_size+offset) ) {
-			d_output_plane[pos + const_params::fft_half - offset] = s_input_1[threadIdx.x + const_params::fft_half];
+			d_output_plane[pos + const_params::fft_half - offset] = s_input_1[threadIdx.x + const_params::fft_half]/((float) const_params::fft_length);
 		}
 		if( (threadIdx.x + const_params::fft_threequarters)>=offset && (threadIdx.x + const_params::fft_threequarters)<(useful_part_size+offset) ) {
-			d_output_plane[pos + const_params::fft_threequarters - offset] = s_input_1[threadIdx.x + const_params::fft_threequarters];
+			d_output_plane[pos + const_params::fft_threequarters - offset] = s_input_1[threadIdx.x + const_params::fft_threequarters]/((float) const_params::fft_length);
 		}
 
 		pos = t*useful_part_size*nConvolutions + blockIdx.x*useful_part_size + threadIdx.x + const_params::fft_length;
 		//if(blockIdx.x==0 && (t==0)) printf("th:%d; pos=%d; offset=%d; useful=%d; output:%f\n", threadIdx.x, pos, offset, useful_part_size, s_input_1[threadIdx.x]);
 		int tmp = threadIdx.x +  + const_params::fft_length;
 		if( tmp>=offset && tmp<(useful_part_size+offset) ) {
-			d_output_plane[pos - offset] = s_input_1[tmp];
+			d_output_plane[pos - offset] = s_input_1[tmp]/((float) const_params::fft_length);
 		}
 		if( (tmp + const_params::fft_quarter)>=offset && (tmp + const_params::fft_quarter)<(useful_part_size+offset) ) {
-			d_output_plane[pos + const_params::fft_quarter - offset] = s_input_1[tmp + const_params::fft_quarter];
+			d_output_plane[pos + const_params::fft_quarter - offset] = s_input_1[tmp + const_params::fft_quarter]/((float) const_params::fft_length);
 		}
 		if( (tmp + const_params::fft_half)>=offset && (tmp + const_params::fft_half)<(useful_part_size+offset) ) {
-			d_output_plane[pos + const_params::fft_half - offset] = s_input_1[tmp + const_params::fft_half];
+			d_output_plane[pos + const_params::fft_half - offset] = s_input_1[tmp + const_params::fft_half]/((float) const_params::fft_length);
 		}
 		if( (tmp + const_params::fft_threequarters)>=offset && (tmp + const_params::fft_threequarters)<(useful_part_size+offset) ) {
-			d_output_plane[pos + const_params::fft_threequarters - offset] = s_input_1[tmp + const_params::fft_threequarters];
+			d_output_plane[pos + const_params::fft_threequarters - offset] = s_input_1[tmp + const_params::fft_threequarters]/((float) const_params::fft_length);
 		}
 		
 		__syncthreads();

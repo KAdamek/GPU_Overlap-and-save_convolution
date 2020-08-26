@@ -145,7 +145,7 @@ void Full_CONV_check(float2 *GPU_result, float2 *h_input, float2 *h_filters, int
 	#ifdef POST_PROCESS
 	
 	printf("\n--> Comparison to CPU time-domain with post-processing:\n");
-	GPU_scale = conv_length;
+	GPU_scale = 1.0;
 	CPU_scale = 1.0;
 	GPU_offset = 0;
 	CPU_offset = 0;
@@ -160,6 +160,7 @@ void Full_CONV_check(float2 *GPU_result, float2 *h_input, float2 *h_filters, int
 	
 	printf("\n--> Comparison to CPU time-domain:\n");
 	GPU_scale = conv_length;
+	GPU_scale = 1.0;
 	CPU_scale = 1.0;
 	GPU_offset = 0;
 	CPU_offset = 0;
