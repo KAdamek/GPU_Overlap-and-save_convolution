@@ -20,6 +20,8 @@ This technique was used in GPU implementation of the Fourier domain acceleration
 
 Current version of the code aims to demonstrate performance gain of the shared memory implementation and for performance testing. 
 
+The suffix "_pp"  means that the code is also performing custom post-processing step.
+
 ## Usage
 In total there are eight different implementations of the overlap-and-save (OLS) method. There is OLS which uses NVIDIA cuFFT library (cuFFT-OLS) and shared memory implementation of the OLS method (SM-OLS) which uses shared memory implementation of the FFT algorithm. Both of these are for one-dimensional complex-to-complex or real-to-real convolutions. Each implementation has also version with non-local post-processing in for of numerical differentiation (distinguished by "_pp" in the directory name). 
 There are two modes of operation, one for performance testing (first argument 'r') which does not require user to provide the input data and one for processing user data (first argument 'f'). The command line arguments are slightly different between cuFFT-OLS and SM-OLS.
